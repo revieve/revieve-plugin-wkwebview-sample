@@ -20,7 +20,8 @@ let REVIEVE_ORIGIN = "*"
 // Select which Revieve API environment to use. Can be test or prod
 let REVIEVE_ENV = "test"
 // Partner ID
-let REVIEVE_PARTNER_ID = "kToSMAjsNx"
+let REVIEVE_PARTNER_ID = "9KpsLizwYK" // skincare demo
+// let REVIEVE_PARTNER_ID = "TShEWzW05I" // vto makeup demo
 
 // Construct the full URL
 let REVIEVE_FULL_URL = URL(string:"\(REVIEVE_CDN_DOMAIN)/revieve-plugin-v4/app.html?partnerId=\(REVIEVE_PARTNER_ID)&env=\(REVIEVE_ENV)&crossOrigin=1&origin=\(REVIEVE_ORIGIN)")
