@@ -31,13 +31,43 @@ struct Revieve {
 class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
     var webView: WKWebView!
     
-    func showAlert(title: String, message: String) {
-        let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+    override func loadView() {
+        // Generate the JS that calls the native app when events happen in revieve-web-plugin
+        let js = """
+                (function() {
+                    window.parent = {
+                        postMessage: function(data, target) {
+                            if (target !== "\(Revieve.ORIGIN)" && target !== "\(Revieve.CDN_DOMAIN)") return;
+                            if (data === undefined || data === "undefined") return;
+                            var dataNormalized = typeof data === "object" ? JSON.stringify(data) : data.toSring();
+                            if (window.webkit.messageHandlers.revieveMessageHandler) window.webkit.messageHandlers.revieveMessageHandler.postMessage(dataNormalized);
+                        }
+                    }
+                    true;
+                })()
+            """
+
+        let webConfiguration = WKWebViewConfiguration()
+        webConfiguration.userContentController.add(self, name: "revieveMessageHandler")
+
+        let script = WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        webConfiguration.userContentController.addUserScript(script)
+        webConfiguration.allowsInlineMediaPlayback = true
         
-        let okAction = UIAlertAction(title: "OK", style: .default, handler: nil)
-        alertController.addAction(okAction)
-        
-        self.present(alertController, animated: true, completion: nil)
+        webView = WKWebView(frame: .zero, configuration: webConfiguration)
+        webView.uiDelegate = self
+
+        view = webView
+
+        // Set up a demo PDP button
+        if (Revieve.SHOW_PDP_BUTTON) {
+            setupPDPButton()
+        }
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        webView.load(URLRequest(url: Revieve.FULL_URL!))
     }
     
     func handleMessage(_ body: String) {
@@ -93,44 +123,14 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
             handleMessage(body)
         }
     }
-
-    override func loadView() {
-        // Generate the JS that calls the native app when events happen in revieve-web-plugin
-        let js = """
-                (function() {
-                    window.parent = {
-                        postMessage: function(data, target) {
-                            if (target !== "\(Revieve.ORIGIN)" && target !== "\(Revieve.CDN_DOMAIN)") return;
-                            if (data === undefined || data === "undefined") return;
-                            var dataNormalized = typeof data === "object" ? JSON.stringify(data) : data.toSring();
-                            if (window.webkit.messageHandlers.revieveMessageHandler) window.webkit.messageHandlers.revieveMessageHandler.postMessage(dataNormalized);
-                        }
-                    }
-                    true;
-                })()
-            """
-
-        let webConfiguration = WKWebViewConfiguration()
-        webConfiguration.userContentController.add(self, name: "revieveMessageHandler")
-
-        let script = WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
-        webConfiguration.userContentController.addUserScript(script)
-        webConfiguration.allowsInlineMediaPlayback = true
-        
-        webView = WKWebView(frame: .zero, configuration: webConfiguration)
-        webView.uiDelegate = self
-
-        view = webView
-
-        // Set up a demo PDP button
-        if (Revieve.SHOW_PDP_BUTTON) {
-            setupPDPButton()
-        }
-    }
     
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        webView.load(URLRequest(url: Revieve.FULL_URL!))
+    func showAlert(title: String, message: String) {
+        let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        
+        let okAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+        alertController.addAction(okAction)
+        
+        self.present(alertController, animated: true, completion: nil)
     }
 
     func setupPDPButton() {
@@ -165,5 +165,19 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
         let productId = "02762"
         let action = "{\"type\":\"tryonProduct\", \"payload\": {\"id\":\"\(productId)\"}}"
         webView.evaluateJavaScript("window.postMessage(\(action), '*')", completionHandler: nil)
+    }
+    
+    // Grants permission for media capture within the WebView for iOS 15 and above.
+    // This avoids duplicate permission prompts, providing a smoother user experience.
+    // TODO: Consider refining permission grants based on the security origin or other criteria.
+    @available(iOS 15, *)
+    func webView(
+        _ webView: WKWebView,
+        requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+        initiatedByFrame frame: WKFrameInfo,
+        type: WKMediaCaptureType,
+        decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+        decisionHandler(.grant)
     }
 }
