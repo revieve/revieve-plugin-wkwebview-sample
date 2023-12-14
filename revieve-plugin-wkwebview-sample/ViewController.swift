@@ -18,40 +18,25 @@ struct Revieve {
     static let CDN_DOMAIN = "https://d38knilzwtuys1.cloudfront.net"
     // Origin set to *
     static let ORIGIN = "*"
+
+    static let LOCALE = "en"
     // Select which Revieve API environment to use. Can be test or prod
     static let ENV = "test"
     // static let PARTNER_ID = "9KpsLizwYK" // skincare demo
     static let PARTNER_ID = "GHru81v4aU" // vto makeup demo
     // PDP VTO trigger example
-    static let SHOW_PDP_BUTTON = false
+    static let SHOW_PDP_BUTTON = true
     // Construct the full URL
-    static let FULL_URL = URL(string: "\(CDN_DOMAIN)/revieve-plugin-v4/app.html?partnerId=\(PARTNER_ID)&env=\(ENV)&crossOrigin=1&origin=\(ORIGIN)")
+    static let LOADER_URL = URL(string: "\(CDN_DOMAIN)/revieve-plugin-v4/revieve-plugin-loader.js")
 }
 
 class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
     var webView: WKWebView!
     
     override func loadView() {
-        // Generate the JS that calls the native app when events happen in revieve-web-plugin
-        let js = """
-                (function() {
-                    window.parent = {
-                        postMessage: function(data, target) {
-                            if (target !== "\(Revieve.ORIGIN)" && target !== "\(Revieve.CDN_DOMAIN)") return;
-                            if (data === undefined || data === "undefined") return;
-                            var dataNormalized = typeof data === "object" ? JSON.stringify(data) : data.toSring();
-                            if (window.webkit.messageHandlers.revieveMessageHandler) window.webkit.messageHandlers.revieveMessageHandler.postMessage(dataNormalized);
-                        }
-                    }
-                    true;
-                })()
-            """
 
         let webConfiguration = WKWebViewConfiguration()
         webConfiguration.userContentController.add(self, name: "revieveMessageHandler")
-
-        let script = WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
-        webConfiguration.userContentController.addUserScript(script)
         webConfiguration.allowsInlineMediaPlayback = true
         
         webView = WKWebView(frame: .zero, configuration: webConfiguration)
@@ -67,7 +52,54 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        webView.load(URLRequest(url: Revieve.FULL_URL!))
+        let htmlString = """
+            <html>
+            <head>
+                <title>Revieve Advisor</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+                <script type="text/javascript">
+                function postMessageToCallbackHandler(type, payload) {
+                    const message = { type, payload };
+                    const serializedMessage = JSON.stringify(message);
+                    window.webkit.messageHandlers.revieveMessageHandler.postMessage(serializedMessage);
+                }
+        
+                var revieveConfig = {
+                    partner_id: '\(Revieve.PARTNER_ID)',
+                    locale: '\(Revieve.LOCALE)',
+                    env: '\(Revieve.ENV)',
+                    disableLauncherButton: true,
+                    onClickProduct: function(product) {
+                        postMessageToCallbackHandler('onClickProduct', [ product ]);
+                    },
+                    // you can implement rest of callbacks here as described in Revieve documentation
+                };
+
+                (function() {
+                    var rv = document.createElement('script');
+                    rv.src = '\(Revieve.CDN_DOMAIN)/revieve-plugin-v4/revieve-plugin-loader.js';
+                    rv.charset = 'utf-8';
+                    rv.type = 'text/javascript';
+                    rv.async = 'true';
+                    rv.onload = rv.onreadystatechange = function() {
+                    var rs = this.readyState;
+                    if (rs && rs != 'complete' && rs != 'loaded') return;
+                    Revieve.Init(revieveConfig, function() {
+                        // Comment out the below line if you want to open the modal
+                        // manually when user clicks a certain button or navigates
+                        // to certain page.
+                        Revieve.API.show();
+                    });
+                    };
+                    var s = document.getElementsByTagName('script')[0];
+                    s.parentNode.insertBefore(rv, s);
+                })();
+                </script>
+            </head>
+            <body></body>
+            </html>
+        """
+        webView.loadHTMLString(htmlString, baseURL: URL(string: "\(Revieve.CDN_DOMAIN)/revieve-plugin-v4/app.html"))
     }
     
     func handleMessage(_ body: String) {
@@ -115,12 +147,11 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
         }
     }
 
-    // All the revieve-web-plugin events arrive here and can be used in the native app as you see fit
+    // All passed callback events arrive here and can be used in the native app as you see fit
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        print("Received a message from the revieve plugin:")
-        print(message.body)
-        if let body = message.body as? String {
-            handleMessage(body)
+        if message.name == "revieveMessageHandler", let messageBody = message.body as? String {
+            print("Received message from Revieve: \(messageBody)")
+            handleMessage(messageBody);
         }
     }
     
@@ -162,9 +193,9 @@ class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
     } 
 
     @objc func pdpButtonClicked() {
-        let productId = "02762"
-        let action = "{\"type\":\"tryonProduct\", \"payload\": {\"id\":\"\(productId)\"}}"
-        webView.evaluateJavaScript("window.postMessage(\(action), '*')", completionHandler: nil)
+        let productId = "02750"
+        print("call addTryOnProduct with id \(productId)")
+        webView.evaluateJavaScript("window.Revieve.API.liveAR.addTryOnProduct('\(productId)');")
     }
     
     // Grants permission for media capture within the WebView for iOS 15 and above.
