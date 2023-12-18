@@ -1,6 +1,6 @@
 # Revieve WKWebView Integration Sample
 
-This repository contains a sample iOS application that demonstrates how to integrate our plugin solution within a native app using WKWebView. The primary goal of this sample project is to provide developers with a clear and concise guide for integrating our plugin with their native applications.
+This repository contains a sample iOS application demonstrating how to integrate our plugin solution within a native app using WKWebView. The primary goal of this sample project is to provide developers with a clear and concise guide for integrating our plugin into their native applications.
 
 ## Table of Contents
 
@@ -10,7 +10,7 @@ This repository contains a sample iOS application that demonstrates how to integ
 
 ## Getting Started
 
-Before you begin, make sure you have the following prerequisites:
+Before you begin, ensure you have the following prerequisites:
 
 - Xcode installed on your development machine.
 - An iOS device or simulator.
@@ -26,7 +26,7 @@ open revieve-plugin-wkwebview-sample.xcodeproj
 
 ## Integration Steps
 
-Follow these step-by-step instructions to integrate the plugin solution within your iOS application using WKWebView:
+Follow these step-by-step instructions to integrate the plugin solution into your iOS application using WKWebView:
 
 1. **Configure partnerId and environment:**
 
@@ -52,68 +52,82 @@ webView.uiDelegate = self
 
 3. **Inject JavaScript:**
 
-Add a JavaScript code snippet to your `WKWebViewConfiguration` instance that defines a custom `postMessage` function. This function will forward the received messages to your native app:
+Add a JavaScript code snippet to your `WKWebViewConfiguration`` instance that defines the configuration (including callbacks) for the plugin solution:
 
 ```swift
-let js = """
-(function() {
-    window.parent = {
-        postMessage: function(data, target) {
-            if (target !== "\(Revieve.ORIGIN)" && target !== "\(Revieve.CDN_DOMAIN)") return;
-            if (data === undefined || data === "undefined") return;
-            var dataNormalized = typeof data === "object" ? JSON.stringify(data) : data.toSring();
-            if (window.webkit.messageHandlers.revieveMessageHandler) window.webkit.messageHandlers.revieveMessageHandler.postMessage(dataNormalized);
-        }
-    }
-    true;
-})()
+let jsConfig = """
+window.revieveConfig = {
+    partner_id: '\(Revieve.PARTNER_ID)',
+    locale: '\(Revieve.LOCALE)',
+    env: '\(Revieve.ENV)',
+    disableLauncherButton: true,
+    onClickProduct: function(product) {
+        postMessageToCallbackHandler('onClickProduct', [ product ]);
+    },
+    // you can implement rest of callbacks here as described in Revieve documentation
+};
+"""
 ```
 
-4. **Handle JavaScript messages:**
+4. **Handle callbacks:**
 
-Conform your view controller to the `WKScriptMessageHandler` protocol and implement the `userContentController(_:didReceive:)` method to handle messages from the plugin:
+As seen in the previous step, the plugin solution will send callbacks to the `postMessageToCallbackHandler` function. Implement this function in your view controller to handle incoming callbacks and add it to the webview configuration:
 
 ```swift
-extension ViewController: WKScriptMessageHandler {
+class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
+  var webView: WKWebView!
+
+  override func loadView() {
+    let webConfiguration = WKWebViewConfiguration()
+    webConfiguration.userContentController.add(self, name: "revieveMessageHandler")
+    // ...
+  }
+
+  webConfiguration.userContentController.add(self, name: "revieveMessageHandler")
+  //...
+  // All passed callback events arrive here and can be used in the native app as you see fit
   func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-    // Handle JavaScript messages here
+      if message.name == "revieveMessageHandler", let messageBody = message.body as? String {
+          print("Received message from Revieve: \(messageBody)")
+          handleMessage(messageBody);
+      }
   }
 }
 ```
 
 5. **Load the plugin:**
 
-Create a `URLRequest` using the plugin solution's CDN URL and partner ID, and load it into the WKWebView instance:
+Load the included HTML template into the webview using the `loadHTMLString` method.
 
 ```swift
-  let request = URLRequest(url: pluginURL)
-  webView.load(request)
-```
-
-6. **Add the WKWebView to your view hierarchy:**
-
-Add the `WKWebView` instance to your view controller's view hierarchy:
-
-```swift
-  view.addSubview(webView)
+func loadRevieveHTML() {
+  if let htmlPath = Bundle.main.path(forResource: "revieve", ofType: "html") {
+    do {
+      let htmlContent = try String(contentsOfFile: htmlPath, encoding: .utf8)
+      webView.loadHTMLString(htmlContent, baseURL: URL(string:"https://d38knilzwtuys1.cloudfront.net/revieve-plugin-v4/app.html"))
+    } catch {
+      print("Error loading HTML file: \(error)")
+    }
+  }
+}
 ```
 
 ## Communication with plugin
 
-The sample project provides a basic integration with the plugin solution. You should customize custom behavior in response to plugin events by modifying the source code as needed.
+The sample project provides basic integration with the plugin solution. Customize the response to plugin callbacks by modifying the source code as needed.
 
 Refer to the plugin solution's basic and advanced documentation for details on available callbacks and data options.
 
-The `postMessage` API enables seamless communication between the plugin solution and your native application. This section will guide you through the process of setting up and handling `postMessage` communication in the WKWebView integration sample.
+The `postMessage`` API enables seamless communication between the plugin solution and your native application. This section guides you through setting up and handling `postMessage`` communication in the WKWebView integration sample.
 
 ### Handling PostMessage Events
 
 Implement the `userContentController(_:didReceive:)` method in your view controller to handle incoming `postMessage` events:
 
 ```swift
-extension ViewController: WKScriptMessageHandler {
+class ViewController: UIViewController, WKUIDelegate, WKScriptMessageHandler {
   func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-    // Handle JavaScript messages here
+    // All passed callback events arrive here and can be used in the native app as you see fit
   }
 }
 ```
@@ -122,25 +136,31 @@ Inside the `userContentController(_:didReceive:)` method, you can parse the JSON
 
 ```swift
 func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-  if let body = message.body as? String {
-    handleMessage(body)
+  if message.name == "revieveMessageHandler", let messageBody = message.body as? String {
+    print("Received message from Revieve: \(messageBody)")
+    handleMessage(messageBody);
   }
 }
 
 func handleMessage(_ body: String) {
-  // Parse and handle the message here
-  // ...
-  if type == "someEventType" {
-    showAlert(title: "Event triggered", message: "The 'someEventType' event has been triggered")
+  if let data = body.data(using: .utf8) {
+    do {
+      if let message = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+          handleJSONMessage(message)
+      }
+    } catch {
+      // Handle JSON parsing exception
+      print("Error parsing JSON: \(error)")
+    }
   }
 }
 ```
 
 Refer to the plugin solution's documentation for a comprehensive list of available events and their payloads.
 
-### Sending PostMessage Commands
+### Sending API Commands
 
-In some cases like PDP try-on integration you may want to send commands from your native app to the  plugin. This section will demonstrate how to send a command to the plugin using `postMessage` communication.
+In some cases, like PDP try-on integration, you may want to send commands from your native app to the Revive API. This section demonstrates how to call a JavaScript function in the plugin solution from your native app.
 
 1. **Create a function to send the command:**
 
@@ -148,13 +168,13 @@ For example, let's say you want to send a `tryonProduct` command with a specific
 
 ```swift
 @objc func pdpButtonClicked() {
-  let productId = "02762"
-  let action = "{\"type\":\"tryonProduct\", \"payload\": {\"id\":\"\(productId)\"}}"
-  webView.evaluateJavaScript("window.postMessage(\(action), '*')", completionHandler: nil)
+  let productId = "02750"
+  print("call addTryOnProduct with id \(productId)")
+  webView.evaluateJavaScript("window.Revieve.API.liveAR.addTryOnProduct('\(productId)');")
 }
 ```
 
-In the example above, a JSON object is created with the appropriate `type` and `payload`. This JSON object is then sent to the WebView plugin using the `evaluateJavaScript` method.
+In the example above, a javascript Revieve API function is called directly with the product ID as a parameter.
 
 2. **Add a button to trigger the command:**
 
@@ -167,3 +187,7 @@ Add a UIButton to your app's user interface that triggers the `pdpButtonClicked`
 In the source code you can set Revieve.SHOW_PDP_BUTTON to `true` to see a demo implementation of the PDP button communication.
 
 By following these steps, you can enable two-ways communication between your app and the plugin.
+
+### Legacy integration without loader script
+
+You can find our legacy documentation for integrating the plugin solution without the loader script [here](https://github.com/revieve/revieve-plugin-wkwebview-sample/tree/legacy)
