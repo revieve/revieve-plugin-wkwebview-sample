@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4969F52D2B2C5A1E00F341E5 /* revieve.html in Resources */ = {isa = PBXBuildFile; fileRef = 4969F52C2B2C5A1E00F341E5 /* revieve.html */; };
 		885AD5AC26AAB93D002E5F06 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885AD5AB26AAB93D002E5F06 /* AppDelegate.swift */; };
 		885AD5AE26AAB93D002E5F06 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885AD5AD26AAB93D002E5F06 /* SceneDelegate.swift */; };
 		885AD5B026AAB93D002E5F06 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885AD5AF26AAB93D002E5F06 /* ViewController.swift */; };
@@ -35,6 +36,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4969F52C2B2C5A1E00F341E5 /* revieve.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = revieve.html; sourceTree = "<group>"; };
 		885AD5A826AAB93D002E5F06 /* revieve-plugin-wkwebview-sample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "revieve-plugin-wkwebview-sample.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		885AD5AB26AAB93D002E5F06 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		885AD5AD26AAB93D002E5F06 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -101,6 +103,7 @@
 			children = (
 				885AD5AB26AAB93D002E5F06 /* AppDelegate.swift */,
 				885AD5AD26AAB93D002E5F06 /* SceneDelegate.swift */,
+				4969F52C2B2C5A1E00F341E5 /* revieve.html */,
 				885AD5AF26AAB93D002E5F06 /* ViewController.swift */,
 				885AD5B126AAB93D002E5F06 /* Main.storyboard */,
 				885AD5B426AAB941002E5F06 /* Assets.xcassets */,
@@ -232,6 +235,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				885AD5B826AAB941002E5F06 /* LaunchScreen.storyboard in Resources */,
+				4969F52D2B2C5A1E00F341E5 /* revieve.html in Resources */,
 				885AD5B526AAB941002E5F06 /* Assets.xcassets in Resources */,
 				885AD5B326AAB93D002E5F06 /* Main.storyboard in Resources */,
 			);
